@@ -1,0 +1,163 @@
+-- 🧠 Brainrot Spawner GUI (SPV-style) — Executor-Friendly
+
+if game.CoreGui:FindFirstChild("BrainrotSpawnerGUI") then
+    game.CoreGui.BrainrotSpawnerGUI:Destroy()
+end
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+local RS = game:GetService("ReplicatedStorage")
+
+-- Remote
+local SpawnBrainrot = RS:WaitForChild("AdminService"):WaitForChild("SpawnBrainrot")
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "BrainrotSpawnerGUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = game.CoreGui
+
+local function r(obj, radius)
+    local c = Instance.new("UICorner", obj)
+    c.CornerRadius = UDim.new(0, radius or 8)
+    return c
+end
+
+local function padL(obj, amount)
+    local p = Instance.new("UIPadding", obj)
+    p.PaddingLeft = UDim.new(0, amount or 6)
+    return p
+end
+
+local function mkButton(parent, text, callback, color)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(1, 0, 0, 28)
+    btn.BackgroundColor3 = color or Color3.fromRGB(255, 100, 100)
+    btn.Text = text
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 12
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.AutoButtonColor = false
+    btn.BorderSizePixel = 0
+    r(btn, 6)
+    btn.MouseEnter:Connect(function() btn.BackgroundTransparency = 0.2 end)
+    btn.MouseLeave:Connect(function() btn.BackgroundTransparency = 0 end)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+local function mkTextBox(parent, placeholder, defaultText)
+    local box = Instance.new("TextBox", parent)
+    box.Size = UDim2.new(1, 0, 0, 28)
+    box.BackgroundColor3 = Color3.fromRGB(28, 30, 38)
+    box.Text = defaultText or ""
+    box.PlaceholderText = placeholder
+    box.PlaceholderColor3 = Color3.fromRGB(100, 110, 130)
+    box.TextColor3 = Color3.fromRGB(220, 225, 240)
+    box.Font = Enum.Font.Gotham
+    box.TextSize = 12
+    box.BorderSizePixel = 0
+    r(box, 6)
+    padL(box, 8)
+    return box
+end
+
+-- MAIN FRAME
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.fromOffset(320, 200)
+main.Position = UDim2.new(0.5, -160, 0.5, -100)
+main.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+main.BorderSizePixel = 0
+main.ClipsDescendants = true
+r(main, 10)
+
+-- DRAG
+local dragging, dragStart, startPos
+local titleBar = Instance.new("Frame", main)
+titleBar.Size = UDim2.new(1,0,0,30)
+titleBar.BackgroundColor3 = Color3.fromRGB(25,27,35)
+titleBar.BorderSizePixel = 0
+r(titleBar, 10)
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                                  startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+-- TITLE
+local title = Instance.new("TextLabel", titleBar)
+title.Size = UDim2.new(1, -60, 1, 0)
+title.Position = UDim2.fromOffset(12,0)
+title.BackgroundTransparency = 1
+title.Text = "BRAINROT SPAWNER"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.TextColor3 = Color3.new(1,1,1)
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- CLOSE BUTTON
+local closeBtn = Instance.new("TextButton", titleBar)
+closeBtn.Size = UDim2.fromOffset(28,28)
+closeBtn.Position = UDim2.new(1,-32,0,1)
+closeBtn.Text = "×"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 18
+closeBtn.TextColor3 = Color3.fromRGB(255,100,100)
+closeBtn.BackgroundColor3 = Color3.fromRGB(35,37,45)
+closeBtn.BorderSizePixel = 0
+r(closeBtn,6)
+closeBtn.MouseButton1Click:Connect(function() main.Visible = false end)
+
+-- INPUTS & BUTTON
+local content = Instance.new("Frame", main)
+content.Size = UDim2.new(1, -20, 1, -40)
+content.Position = UDim2.fromOffset(10,35)
+content.BackgroundTransparency = 1
+
+local nameBox = mkTextBox(content, "Brainrot Name")
+nameBox.Position = UDim2.new(0,0,0,0)
+local mutationBox = mkTextBox(content, "Mutation (optional)")
+mutationBox.Position = UDim2.new(0,0,0,35)
+local traitsBox = mkTextBox(content, "Traits (comma-separated)")
+traitsBox.Position = UDim2.new(0,0,0,70)
+
+local spawnBtn = mkButton(content, "SPAWN BRAINROT", function()
+    local Name = nameBox.Text
+    local Mutation = mutationBox.Text
+    local Traits = traitsBox.Text ~= "" and traitsBox.Text or "None"
+
+    local success, message = pcall(function()
+        return SpawnBrainrot:InvokeServer(Name, Mutation, Traits, 20)
+    end)
+
+    if success then
+        if message then
+            warn("Spawn Result:", message)
+        else
+            print("Brainrot spawned successfully!")
+        end
+    else
+        warn("Error spawning brainrot:", message)
+    end
+end, Color3.fromRGB(120,50,50))
+spawnBtn.Position = UDim2.new(0,0,0,110)

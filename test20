@@ -1,0 +1,98 @@
+--!strict
+-- Executor-compatible Brainrot Spawner GUI
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Player = Players.LocalPlayer
+repeat task.wait() until Player
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+-- Destroy old GUI if it exists
+if PlayerGui:FindFirstChild("BrainrotSpawnerGUI") then
+    PlayerGui.BrainrotSpawnerGUI:Destroy()
+end
+
+-- Remote
+local SpawnBrainrot = ReplicatedStorage:WaitForChild("AdminService"):WaitForChild("SpawnBrainrot")
+
+-- ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "BrainrotSpawnerGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+-- Main Frame
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 300, 0, 180)
+Frame.Position = UDim2.new(0.5, -150, 0.5, -90)
+Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
+Frame.Active = true
+Frame.Draggable = true
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Title.Text = "Brainrot Spawner"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextScaled = true
+Title.Parent = Frame
+
+-- Brainrot Name Input
+local NameBox = Instance.new("TextBox")
+NameBox.Size = UDim2.new(0.9, 0, 0, 25)
+NameBox.Position = UDim2.new(0.05, 0, 0, 40)
+NameBox.PlaceholderText = "Brainrot Name"
+NameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+NameBox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+NameBox.Parent = Frame
+
+-- Mutation Input
+local MutationBox = Instance.new("TextBox")
+MutationBox.Size = UDim2.new(0.9, 0, 0, 25)
+MutationBox.Position = UDim2.new(0.05, 0, 0, 70)
+MutationBox.PlaceholderText = "Mutation (optional)"
+MutationBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+MutationBox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+MutationBox.Parent = Frame
+
+-- Traits Input
+local TraitsBox = Instance.new("TextBox")
+TraitsBox.Size = UDim2.new(0.9, 0, 0, 25)
+TraitsBox.Position = UDim2.new(0.05, 0, 0, 100)
+TraitsBox.PlaceholderText = "Traits (comma-separated)"
+TraitsBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TraitsBox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+TraitsBox.Parent = Frame
+
+-- Spawn Button
+local SpawnButton = Instance.new("TextButton")
+SpawnButton.Size = UDim2.new(0.9, 0, 0, 30)
+SpawnButton.Position = UDim2.new(0.05, 0, 0, 135)
+SpawnButton.Text = "Spawn Brainrot"
+SpawnButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpawnButton.BackgroundColor3 = Color3.fromRGB(120, 50, 50)
+SpawnButton.Parent = Frame
+
+SpawnButton.MouseButton1Click:Connect(function()
+    local Name = NameBox.Text
+    local Mutation = MutationBox.Text
+    local Traits = TraitsBox.Text ~= "" and TraitsBox.Text or "None"
+
+    local success, message = pcall(function()
+        return SpawnBrainrot:InvokeServer(Name, Mutation, Traits, 20)
+    end)
+
+    if success then
+        if message then
+            warn("Spawn Result:", message)
+        else
+            print("Brainrot spawned successfully!")
+        end
+    else
+        warn("Error spawning brainrot:", message)
+    end
+end)

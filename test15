@@ -1,97 +1,48 @@
+--!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Player = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
 
--- Remote function
-local SpawnBrainrot = ReplicatedStorage:WaitForChild("AdminService"):WaitForChild("SpawnBrainrot")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
--- ScreenGui
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AdminPanelGUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = PlayerGui
+-- Clean up old GUI if exists
+if playerGui:FindFirstChild("AdminPanelGui") then
+    playerGui.AdminPanelGui:Destroy()
+end
 
--- Main Frame
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 250, 0, 150)
-Frame.Position = UDim2.new(0.5, -125, 0.5, -75)
-Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-Frame.BorderSizePixel = 0
-Frame.Parent = ScreenGui
-Frame.Active = true
-Frame.Draggable = true
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AdminPanelGui"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
 
--- Title
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 25)
-Title.Position = UDim2.new(0, 0, 0, 0)
-Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Title.Text = "Admin Panel"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextScaled = true
-Title.Parent = Frame
+-- Create main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 220, 0, 120)
+frame.Position = UDim2.new(0.5, -110, 0.5, -60)
+frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+frame.BorderSizePixel = 1
+frame.Parent = screenGui
 
--- Brainrot Name Input
-local NameBox = Instance.new("TextBox")
-NameBox.Size = UDim2.new(0.9, 0, 0, 25)
-NameBox.Position = UDim2.new(0.05, 0, 0, 35)
-NameBox.PlaceholderText = "Brainrot Name"
-NameBox.Text = ""
-NameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-NameBox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-NameBox.Parent = Frame
+-- Create Spawn Button
+local spawnButton = Instance.new("TextButton")
+spawnButton.Size = UDim2.new(0, 200, 0, 50)
+spawnButton.Position = UDim2.new(0, 10, 0, 10)
+spawnButton.Text = "Spawn Brainrot"
+spawnButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+spawnButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+spawnButton.Parent = frame
 
--- Mutation Input
-local MutationBox = Instance.new("TextBox")
-MutationBox.Size = UDim2.new(0.9, 0, 0, 25)
-MutationBox.Position = UDim2.new(0.05, 0, 0, 65)
-MutationBox.PlaceholderText = "Mutation (optional)"
-MutationBox.Text = ""
-MutationBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-MutationBox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-MutationBox.Parent = Frame
+-- Example: Call server RemoteFunction
+local spawnRemote = ReplicatedStorage:WaitForChild("AdminService"):WaitForChild("SpawnBrainrot")
 
--- Traits Input
-local TraitsBox = Instance.new("TextBox")
-TraitsBox.Size = UDim2.new(0.9, 0, 0, 25)
-TraitsBox.Position = UDim2.new(0.05, 0, 0, 95)
-TraitsBox.PlaceholderText = "Traits (comma-separated)"
-TraitsBox.Text = ""
-TraitsBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-TraitsBox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-TraitsBox.Parent = Frame
-
--- Spawn Button
-local SpawnButton = Instance.new("TextButton")
-SpawnButton.Size = UDim2.new(0.9, 0, 0, 25)
-SpawnButton.Position = UDim2.new(0.05, 0, 0, 125)
-SpawnButton.Text = "Spawn Brainrot"
-SpawnButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpawnButton.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
-SpawnButton.Parent = Frame
-
-SpawnButton.MouseButton1Click:Connect(function()
-	local Name = NameBox.Text
-	local Mutation = MutationBox.Text
-	local Traits = TraitsBox.Text
-
-	-- Default to "None" if traits empty
-	if Traits == "" then
-		Traits = "None"
-	end
-
-	local success, message = pcall(function()
-		return SpawnBrainrot:InvokeServer(Name, Mutation, Traits, 20)
-	end)
-
-	if success then
-		if message then
-			warn("Spawn Result:", message)
-		else
-			print("Brainrot spawned successfully!")
-		end
-	else
-		warn("Error spawning brainrot:", message)
-	end
+spawnButton.MouseButton1Click:Connect(function()
+    local success, message = pcall(function()
+        return spawnRemote:InvokeServer("Dog", "", "None", 16) -- Customize the arguments
+    end)
+    if not success then
+        warn("Failed to spawn brainrot:", message)
+    else
+        print("Spawned brainrot successfully")
+    end
 end)

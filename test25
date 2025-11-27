@@ -1,0 +1,96 @@
+--!strict
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Player = Players.LocalPlayer
+repeat task.wait() until Player
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+-- Destroy old GUI if exists
+if PlayerGui:FindFirstChild("BrainrotSpawnerGUI") then
+    PlayerGui.BrainrotSpawnerGUI:Destroy()
+end
+
+-- ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "BrainrotSpawnerGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+-- Main Frame
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 300, 0, 180)
+Frame.Position = UDim2.new(0.5, -150, 0.5, -90)
+Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Title.Text = "Brainrot Spawner"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextScaled = true
+Title.Parent = Frame
+
+-- Input Boxes
+local function createBox(posY, placeholder)
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(0.9, 0, 0, 25)
+    box.Position = UDim2.new(0.05, 0, 0, posY)
+    box.PlaceholderText = placeholder
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    box.Parent = Frame
+    return box
+end
+
+local NameBox = createBox(40, "Brainrot Name")
+local MutationBox = createBox(70, "Mutation (optional)")
+local TraitsBox = createBox(100, "Traits (comma-separated)")
+local SpeedBox = createBox(130, "Speed (number, optional)")
+
+-- Spawn Button
+local SpawnButton = Instance.new("TextButton")
+SpawnButton.Size = UDim2.new(0.9, 0, 0, 30)
+SpawnButton.Position = UDim2.new(0.05, 0, 0, 160)
+SpawnButton.Text = "Spawn Brainrot"
+SpawnButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpawnButton.BackgroundColor3 = Color3.fromRGB(120, 50, 50)
+SpawnButton.Parent = Frame
+
+-- Close Button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 28, 0, 28)
+CloseButton.Position = UDim2.new(1, -32, 0, 3)
+CloseButton.Text = "×"
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextSize = 18
+CloseButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+CloseButton.BackgroundColor3 = Color3.fromRGB(35, 37, 45)
+CloseButton.BorderSizePixel = 0
+CloseButton.Parent = Frame
+CloseButton.MouseButton1Click:Connect(function()
+    Frame.Visible = false
+end)
+
+-- Reference to RemoteFunction
+local SpawnBrainrotRF = ReplicatedStorage:WaitForChild("AdminService"):WaitForChild("SpawnBrainrot")
+
+-- Connect button to server function
+SpawnButton.MouseButton1Click:Connect(function()
+    local name = NameBox.Text
+    local mutation = MutationBox.Text
+    local traits = TraitsBox.Text ~= "" and TraitsBox.Text or "None"
+    local speed = tonumber(SpeedBox.Text) or 10
+
+    local success, message = SpawnBrainrotRF:InvokeServer(name, mutation, traits, speed)
+    if success then
+        print("Brainrot spawned successfully!")
+    else
+        warn("Failed to spawn brainrot:", message)
+    end
+end)

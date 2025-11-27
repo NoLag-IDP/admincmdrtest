@@ -1,0 +1,238 @@
+-- 🧠 Admin Panel GUI (Cmdr-only, Global Brainrot) — Made by Siva
+if game:GetService("CoreGui"):FindFirstChild("AdminPanelGUI") then
+	game:GetService("CoreGui").AdminPanelGUI:Destroy()
+end
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+
+-- Cmdr client
+local CmdrClient
+pcall(function()
+	CmdrClient = require(ReplicatedStorage:WaitForChild("CmdrClient"))
+end)
+
+local function runCmd(text)
+	if not text or text == "" then return end
+	if CmdrClient and type(CmdrClient.SendCommand) == "function" then
+		pcall(function() CmdrClient:SendCommand(text) end)
+		return
+	end
+	warn("Cmdr client not found, cannot run command:", text)
+end
+
+-- Helpers
+local function parseNumber(txt)
+	txt = tostring(txt or ""):gsub("[^%d%-%.]", "")
+	return tonumber(txt)
+end
+
+local function r(obj, radius)
+	local c = Instance.new("UICorner", obj)
+	c.CornerRadius = UDim.new(0, radius or 8)
+	return c
+end
+
+local function padL(obj, amount)
+	local p = Instance.new("UIPadding", obj)
+	p.PaddingLeft = UDim.new(0, amount or 6)
+	return p
+end
+
+local function mkButton(parent, text, callback, color)
+	local btn = Instance.new("TextButton", parent)
+	btn.Size = UDim2.new(1, 0, 0, 28)
+	btn.BackgroundColor3 = color or Color3.fromRGB(255, 100, 100)
+	btn.Text = text
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 10
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.AutoButtonColor = false
+	btn.BorderSizePixel = 0
+	r(btn, 6)
+	btn.MouseEnter:Connect(function() btn.BackgroundTransparency = 0.2 end)
+	btn.MouseLeave:Connect(function() btn.BackgroundTransparency = 0 end)
+	btn.MouseButton1Click:Connect(function() pcall(callback) end)
+	return btn
+end
+
+local function mkTextBox(parent, placeholder, defaultText)
+	local box = Instance.new("TextBox", parent)
+	box.Size = UDim2.new(1, 0, 0, 28)
+	box.BackgroundColor3 = Color3.fromRGB(28, 30, 38)
+	box.Text = defaultText or ""
+	box.PlaceholderText = placeholder or ""
+	box.PlaceholderColor3 = Color3.fromRGB(100, 110, 130)
+	box.TextColor3 = Color3.fromRGB(220, 225, 240)
+	box.Font = Enum.Font.Gotham
+	box.TextSize = 10
+	box.BorderSizePixel = 0
+	box.ClearTextOnFocus = false
+	r(box, 6)
+	padL(box, 8)
+	return box
+end
+
+local function mkSection(parent, title)
+	local section = Instance.new("Frame", parent)
+	section.Size = UDim2.new(1, 0, 0, 0)
+	section.BackgroundTransparency = 1
+	section.AutomaticSize = Enum.AutomaticSize.Y
+
+	local layout = Instance.new("UIListLayout", section)
+	layout.Padding = UDim.new(0, 5)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	if title then
+		local lbl = Instance.new("TextLabel", section)
+		lbl.Size = UDim2.new(1, 0, 0, 16)
+		lbl.Text = title
+		lbl.Font = Enum.Font.GothamBold
+		lbl.TextSize = 11
+		lbl.TextColor3 = Color3.new(1, 1, 1)
+		lbl.BackgroundTransparency = 1
+		lbl.LayoutOrder = 0
+	end
+	return section
+end
+
+-- build GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "AdminPanelGUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = CoreGui
+
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.fromOffset(420, 200)
+main.Position = UDim2.new(0.5, -210, 0.5, -100)
+main.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+main.BorderSizePixel = 0
+main.ClipsDescendants = true
+r(main, 10)
+
+-- Title bar
+local titleBar = Instance.new("Frame", main)
+titleBar.Size = UDim2.new(1, 0, 0, 35)
+titleBar.BackgroundColor3 = Color3.fromRGB(25, 27, 35)
+r(titleBar, 10)
+
+local dragging, dragStart, startPos = false, nil, nil
+titleBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = main.Position
+	end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+	end
+end)
+
+local title = Instance.new("TextLabel", titleBar)
+title.Size = UDim2.new(0, 200, 1, 0)
+title.Position = UDim2.fromOffset(12, 0)
+title.BackgroundTransparency = 1
+title.Text = "ADMIN PANEL"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+local closeBtn = Instance.new("TextButton", titleBar)
+closeBtn.Size = UDim2.fromOffset(28, 28)
+closeBtn.Position = UDim2.new(1, -32, 0, 3)
+closeBtn.Text = "×"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 18
+closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+closeBtn.BackgroundColor3 = Color3.fromRGB(35, 37, 45)
+closeBtn.BorderSizePixel = 0
+r(closeBtn, 6)
+closeBtn.MouseButton1Click:Connect(function() main.Visible = false end)
+
+local minimizeBtn = Instance.new("TextButton", titleBar)
+minimizeBtn.Size = UDim2.fromOffset(28, 28)
+minimizeBtn.Position = UDim2.new(1, -68, 0, 3)
+minimizeBtn.Text = "–"
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 18
+minimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(35, 37, 45)
+minimizeBtn.BorderSizePixel = 0
+r(minimizeBtn, 6)
+
+-- Content
+local content = Instance.new("Frame", main)
+content.Size = UDim2.new(1, 0, 1, -35)
+content.Position = UDim2.fromOffset(0, 35)
+content.BackgroundTransparency = 1
+
+local section = mkSection(content, "Spawn Global Brainrot")
+section.LayoutOrder = 1
+
+local g_animal = mkTextBox(section, "Animal Name", "Strawberry Elephant")
+local g_mutation = mkTextBox(section, "Mutation (or leave blank)", "Normal")
+local g_traits = mkTextBox(section, 'Traits (e.g. "Fast","Camouflage" or Fast, Camouflage)', "")
+local g_speed = mkTextBox(section, "Speed (optional number)", "")
+
+local traitsInfo = Instance.new("TextLabel", section)
+traitsInfo.Size = UDim2.new(1, 0, 0, 14)
+traitsInfo.BackgroundTransparency = 1
+traitsInfo.TextColor3 = Color3.fromRGB(200,200,200)
+traitsInfo.Font = Enum.Font.Gotham
+traitsInfo.TextSize = 10
+traitsInfo.Text = "Traits can be quoted or comma-separated. Leave Speed blank for default."
+traitsInfo.LayoutOrder = 5
+
+local spawnGlobalBtn = mkButton(section, "SPAWN GLOBAL", function()
+	local animalName = tostring(g_animal.Text or "")
+	local mutation = tostring(g_mutation.Text or "")
+	local traits = tostring(g_traits.Text or "")
+	local speedText = tostring(g_speed.Text or "")
+
+	local speedArg = "nil"
+	if speedText ~= "" then
+		local num = parseNumber(speedText)
+		if not num then
+			warn("Invalid speed value")
+			return
+		end
+		speedArg = tostring(num)
+	end
+
+	local cmd = ("spawnroadbrainrotglobal %q %q %q %s"):format(animalName, mutation, traits, speedArg)
+	runCmd(cmd)
+end)
+spawnGlobalBtn.LayoutOrder = 6
+
+-- MINIMIZE behavior
+local minimized = false
+local fullSize = main.Size
+minimizeBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	if minimized then
+		TweenService:Create(main, TweenInfo.new(0.35), { Size = UDim2.new(0, 420, 0, 45) }):Play()
+		content.Visible = false
+	else
+		TweenService:Create(main, TweenInfo.new(0.35), { Size = fullSize }):Play()
+		content.Visible = true
+	end
+end)
+
+pcall(function()
+	gui.IgnoreGuiInset = true
+end)

@@ -1,0 +1,333 @@
+-- 🧠 Admin Panel GUI (SPV-style) — Made by Siva (Executor + fallback support)
+-- Copy-paste ready.
+
+if game:GetService("CoreGui"):FindFirstChild("AdminPanelGUI") then
+	game:GetService("CoreGui").AdminPanelGUI:Destroy()
+end
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+
+-- Try to find Cmdr client; otherwise prepare fallback to old invoke remote (if present)
+local CmdrClient
+pcall(function()
+	CmdrClient = require(ReplicatedStorage:WaitForChild("CmdrClient"))
+end)
+
+-- Fallback invoke remote (keeps compatibility with earlier script versions / executors)
+local invokeRemote
+do
+	local ok, conch = pcall(function() return ReplicatedStorage:FindFirstChild("conch_networking") end)
+	if ok and conch and conch:FindFirstChild("invoke_server_command") then
+		invokeRemote = conch.invoke_server_command
+	end
+end
+
+-- unified runner: uses CmdrClient:SendCommand if available, otherwise fires invoke remote (basic fallback)
+local function runCmd(text)
+	if not text or text == "" then return end
+	-- prefer CmdrClient
+	if CmdrClient and type(CmdrClient.SendCommand) == "function" then
+		pcall(function() CmdrClient:SendCommand(text) end)
+		return
+	end
+	-- fallback: try to call invoke_remote in a compatible form
+	if invokeRemote then
+		-- some old setups expect a payload, we'll send a simple payload consistent with earlier examples
+		local payload = { invoke_id = 1, name = "cmdr_fallback_run", args = { text } }
+		pcall(function() invokeRemote:FireServer(payload) end)
+		return
+	end
+	-- final fallback: warn locally (no remote)
+	warn("No command interface found to run:", text)
+end
+
+-- PARSE NUMBER helper
+local function parseNumber(txt)
+	txt = tostring(txt or ""):gsub("[^%d%-%.]", "")
+	return tonumber(txt)
+end
+
+-- Basic UI helpers
+local function r(obj, radius)
+	local c = Instance.new("UICorner", obj)
+	c.CornerRadius = UDim.new(0, radius or 8)
+	return c
+end
+
+local function padL(obj, amount)
+	local p = Instance.new("UIPadding", obj)
+	p.PaddingLeft = UDim.new(0, amount or 6)
+	return p
+end
+
+local function mkButton(parent, text, callback, color)
+	local btn = Instance.new("TextButton", parent)
+	btn.Size = UDim2.new(1, 0, 0, 28)
+	btn.BackgroundColor3 = color or Color3.fromRGB(255, 100, 100)
+	btn.Text = text
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 10
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.AutoButtonColor = false
+	btn.BorderSizePixel = 0
+	r(btn, 6)
+	btn.MouseEnter:Connect(function() btn.BackgroundTransparency = 0.2 end)
+	btn.MouseLeave:Connect(function() btn.BackgroundTransparency = 0 end)
+	btn.MouseButton1Click:Connect(function() pcall(callback) end)
+	return btn
+end
+
+local function mkTextBox(parent, placeholder, defaultText)
+	local box = Instance.new("TextBox", parent)
+	box.Size = UDim2.new(1, 0, 0, 28)
+	box.BackgroundColor3 = Color3.fromRGB(28, 30, 38)
+	box.Text = defaultText or ""
+	box.PlaceholderText = placeholder or ""
+	box.PlaceholderColor3 = Color3.fromRGB(100, 110, 130)
+	box.TextColor3 = Color3.fromRGB(220, 225, 240)
+	box.Font = Enum.Font.Gotham
+	box.TextSize = 10
+	box.BorderSizePixel = 0
+	box.ClearTextOnFocus = false
+	r(box, 6)
+	padL(box, 8)
+	return box
+end
+
+local function mkSection(parent, title)
+	local section = Instance.new("Frame", parent)
+	section.Size = UDim2.new(1, 0, 0, 0)
+	section.BackgroundTransparency = 1
+	section.AutomaticSize = Enum.AutomaticSize.Y
+
+	local layout = Instance.new("UIListLayout", section)
+	layout.Padding = UDim.new(0, 5)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	if title then
+		local lbl = Instance.new("TextLabel", section)
+		lbl.Size = UDim2.new(1, 0, 0, 16)
+		lbl.Text = title
+		lbl.Font = Enum.Font.GothamBold
+		lbl.TextSize = 11
+		lbl.TextColor3 = Color3.new(1, 1, 1)
+		lbl.BackgroundTransparency = 1
+		lbl.LayoutOrder = 0
+	end
+	return section
+end
+
+-- build GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "AdminPanelGUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = CoreGui
+
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.fromOffset(420, 300)
+main.Position = UDim2.new(0.5, -210, 0.5, -150)
+main.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+main.BorderSizePixel = 0
+main.ClipsDescendants = true
+r(main, 10)
+
+-- Title bar (drag)
+local titleBar = Instance.new("Frame", main)
+titleBar.Size = UDim2.new(1, 0, 0, 35)
+titleBar.BackgroundColor3 = Color3.fromRGB(25, 27, 35)
+r(titleBar, 10)
+
+local dragging, dragStart, startPos = false, nil, nil
+titleBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = main.Position
+	end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+	end
+end)
+
+local title = Instance.new("TextLabel", titleBar)
+title.Size = UDim2.new(0, 200, 1, 0)
+title.Position = UDim2.fromOffset(12, 0)
+title.BackgroundTransparency = 1
+title.Text = "ADMIN PANEL"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+local closeBtn = Instance.new("TextButton", titleBar)
+closeBtn.Size = UDim2.fromOffset(28, 28)
+closeBtn.Position = UDim2.new(1, -32, 0, 3)
+closeBtn.Text = "×"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 18
+closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+closeBtn.BackgroundColor3 = Color3.fromRGB(35, 37, 45)
+closeBtn.BorderSizePixel = 0
+r(closeBtn, 6)
+closeBtn.MouseButton1Click:Connect(function() main.Visible = false end)
+
+local minimizeBtn = Instance.new("TextButton", titleBar)
+minimizeBtn.Size = UDim2.fromOffset(28, 28)
+minimizeBtn.Position = UDim2.new(1, -68, 0, 3)
+minimizeBtn.Text = "–"
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 18
+minimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(35, 37, 45)
+minimizeBtn.BorderSizePixel = 0
+r(minimizeBtn, 6)
+
+-- side tabs + content
+local sideTab = Instance.new("Frame", main)
+sideTab.Size = UDim2.new(0, 120, 1, -35)
+sideTab.Position = UDim2.fromOffset(0, 35)
+sideTab.BackgroundColor3 = Color3.fromRGB(28, 30, 38)
+sideTab.BorderSizePixel = 0
+
+local sideLayout = Instance.new("UIListLayout", sideTab)
+sideLayout.Padding = UDim.new(0, 4)
+sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
+local sidePad = Instance.new("UIPadding", sideTab)
+sidePad.PaddingTop = UDim.new(0, 8)
+sidePad.PaddingLeft = UDim.new(0, 4)
+sidePad.PaddingRight = UDim.new(0, 4)
+
+local contentContainer = Instance.new("Frame", main)
+contentContainer.Size = UDim2.new(1, -120, 1, -35)
+contentContainer.Position = UDim2.fromOffset(120, 35)
+contentContainer.BackgroundTransparency = 1
+
+local tabBtns, tabFrames = {}, {}
+
+local function createTab(name)
+	local btn = mkButton(sideTab, name, function()
+		for _, f in pairs(tabFrames) do f.Visible = false end
+		for _, b in pairs(tabBtns) do b.BackgroundColor3 = Color3.fromRGB(255, 100, 100) end
+		tabFrames[name].Visible = true
+		btn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+	end)
+	btn.LayoutOrder = #tabBtns + 1
+	tabBtns[name] = btn
+
+	local frame = Instance.new("ScrollingFrame", contentContainer)
+	frame.Size = UDim2.new(1, -10, 1, -6)
+	frame.Position = UDim2.fromOffset(5, 3)
+	frame.BackgroundTransparency = 1
+	frame.ScrollBarThickness = 3
+	frame.ScrollBarImageColor3 = Color3.fromRGB(88, 101, 242)
+	frame.Visible = false
+
+	local layout = Instance.new("UIListLayout", frame)
+	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		frame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 6)
+	end)
+
+	tabFrames[name] = frame
+	return frame
+end
+
+-- TABS: we create only 1,3,5 as requested
+local tab1 = createTab("Brainrot Spawner")
+local tab3 = createTab("Add Money")
+local tab5 = createTab("Lucky Blocks")
+
+-- TAB 1 CONTENT: spawn brainrot (sends command through Cmdr / fallback)
+do
+	local s = mkSection(tab1, "Spawn Brainrots")
+	s.LayoutOrder = 1
+	local n = mkTextBox(s, "Pet Name", "Strawberry Elephant")
+	local m = mkTextBox(s, "Mutation", "Normal")
+
+	-- put an explanatory label for executor support info (small)
+	local info = Instance.new("TextLabel", s)
+	info.Size = UDim2.new(1, 0, 0, 14)
+	info.BackgroundTransparency = 1
+	info.TextColor3 = Color3.fromRGB(200,200,200)
+	info.Font = Enum.Font.Gotham
+	info.TextSize = 10
+	info.Text = "Uses Cmdr client if present; otherwise uses fallback invoke."
+	info.LayoutOrder = 1
+
+	local spawnBtn = mkButton(s, "SPAWN", function()
+		-- ensure strings are escaped and quoted for Cmdr argument parsing
+		local pet = tostring(n.Text or "")
+		local mut = tostring(m.Text or "")
+		-- format with quotes so Cmdr argument parser receives full strings with spaces
+		local cmd = ("spawnbrainrot %q %q"):format(pet, mut)
+		runCmd(cmd)
+	end)
+	spawnBtn.LayoutOrder = 2
+end
+
+-- TAB 3 CONTENT: add money
+do
+	local s = mkSection(tab3, "Add Money")
+	local box = mkTextBox(s, "Amount")
+	local addBtn = mkButton(s, "ADD", function()
+		local num = parseNumber(box.Text)
+		if not num then warn("Invalid Amount") return end
+		runCmd(("setmoney %s"):format(tostring(num)))
+	end)
+	addBtn.LayoutOrder = 1
+end
+
+-- TAB 5 CONTENT: lucky blocks
+do
+	local s = mkSection(tab5, "Spawn Lucky Block")
+	local n = mkTextBox(s, "Block Name", "Secret Lucky Block")
+	local m = mkTextBox(s, "Mutation", "Normal")
+	local spawnBtn = mkButton(s, "SPAWN", function()
+		local pet = tostring(n.Text or "")
+		local mut = tostring(m.Text or "")
+		local cmd = ("spawnluckyblock %q %q"):format(pet, mut)
+		runCmd(cmd)
+	end)
+	spawnBtn.LayoutOrder = 1
+end
+
+-- default open tab (Brainrot Spawner)
+tabFrames["Brainrot Spawner"].Visible = true
+tabBtns["Brainrot Spawner"].BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+
+-- MINIMIZE behavior
+local minimized = false
+local fullSize = main.Size
+minimizeBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	if minimized then
+		TweenService:Create(main, TweenInfo.new(0.35), { Size = UDim2.new(0, 420, 0, 45) }):Play()
+		sideTab.Visible = false
+		contentContainer.Visible = false
+	else
+		TweenService:Create(main, TweenInfo.new(0.35), { Size = fullSize }):Play()
+		sideTab.Visible = true
+		contentContainer.Visible = true
+	end
+end)
+
+-- ensure the GUI stays on top of other CoreGui elements where feasible
+pcall(function()
+	gui.IgnoreGuiInset = true
+end)

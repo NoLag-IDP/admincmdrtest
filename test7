@@ -1,0 +1,112 @@
+--// UNIVERSAL EXECUTOR-SUPPORTED TABBED GUI
+--// Works in Delta, Fluxus, Arceus X, Hydrogen, etc.
+
+if getgenv().TabbedGUI then
+    getgenv().TabbedGUI:Destroy()
+end
+
+-- UI LIB CONVERSION (Executor Safe)
+local ScreenGui = Instance.new("ScreenGui")
+local Main = Instance.new("Frame")
+local TabButtons = Instance.new("Frame")
+local Content = Instance.new("Frame")
+
+ScreenGui.Parent = game.CoreGui
+ScreenGui.Name = "TabbedGUI"
+
+Main.Parent = ScreenGui
+Main.Size = UDim2.new(0, 350, 0, 250)
+Main.Position = UDim2.new(0.5, -175, 0.5, -125)
+Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Main.BorderSizePixel = 0
+
+-- Draggable (Executor-safe)
+local UIS = game:GetService("UserInputService")
+local dragging, dragStart, startPos
+
+Main.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = Main.Position
+    end
+end)
+
+Main.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- TAB BUTTONS
+TabButtons.Parent = Main
+TabButtons.Size = UDim2.new(1, 0, 0, 35)
+TabButtons.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TabButtons.BorderSizePixel = 0
+
+local function createTabButton(name, order)
+    local btn = Instance.new("TextButton")
+    btn.Parent = TabButtons
+    btn.Size = UDim2.new(0, 115, 0, 35)
+    btn.Position = UDim2.new(0, (order - 1) * 115, 0, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BorderSizePixel = 0
+    btn.Name = name .. "_Button"
+    return btn
+end
+
+local Tab1Button = createTabButton("Tab 1", 1)
+local Tab2Button = createTabButton("Tab 2", 2)
+local Tab3Button = createTabButton("Tab 3", 3)
+
+-- CONTENT AREA
+Content.Parent = Main
+Content.Size = UDim2.new(1, 0, 1, -35)
+Content.Position = UDim2.new(0, 0, 0, 35)
+Content.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Content.BorderSizePixel = 0
+
+-- BUILD CONTENT PAGES
+local function createPage(name, text)
+    local page = Instance.new("TextLabel")
+    page.Parent = Content
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.Text = text
+    page.TextColor3 = Color3.fromRGB(255, 255, 255)
+    page.TextSize = 20
+    page.Visible = false
+    page.Name = name .. "_Page"
+    return page
+end
+
+local Page1 = createPage("Tab1", "🚀 This is Tab 1 content")
+local Page2 = createPage("Tab2", "🔥 This is Tab 2 content")
+local Page3 = createPage("Tab3", "⚡ This is Tab 3 content")
+
+-- SWITCHING FUNCTION
+local function showPage(page)
+    Page1.Visible = false
+    Page2.Visible = false
+    Page3.Visible = false
+    page.Visible = true
+end
+
+-- BUTTON CONNECTIONS
+Tab1Button.MouseButton1Click:Connect(function() showPage(Page1) end)
+Tab2Button.MouseButton1Click:Connect(function() showPage(Page2) end)
+Tab3Button.MouseButton1Click:Connect(function() showPage(Page3) end)
+
+-- Default Page:
+showPage(Page1)
+
+getgenv().TabbedGUI = ScreenGui

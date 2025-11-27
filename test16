@@ -1,0 +1,48 @@
+--!strict
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Clean up old GUI if exists
+if playerGui:FindFirstChild("AdminPanelGui") then
+    playerGui.AdminPanelGui:Destroy()
+end
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AdminPanelGui"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
+
+-- Create main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 220, 0, 120)
+frame.Position = UDim2.new(0.5, -110, 0.5, -60)
+frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+frame.BorderSizePixel = 1
+frame.Parent = screenGui
+
+-- Create Spawn Button
+local spawnButton = Instance.new("TextButton")
+spawnButton.Size = UDim2.new(0, 200, 0, 50)
+spawnButton.Position = UDim2.new(0, 10, 0, 10)
+spawnButton.Text = "Spawn Brainrot"
+spawnButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+spawnButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+spawnButton.Parent = frame
+
+-- Example: Call server RemoteFunction
+local spawnRemote = ReplicatedStorage:WaitForChild("AdminService"):WaitForChild("SpawnBrainrot")
+
+spawnButton.MouseButton1Click:Connect(function()
+    local success, message = pcall(function()
+        return spawnRemote:InvokeServer("Dog", "", "None", 16) -- Customize the arguments
+    end)
+    if not success then
+        warn("Failed to spawn brainrot:", message)
+    else
+        print("Spawned brainrot successfully")
+    end
+end)
